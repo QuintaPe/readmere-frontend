@@ -208,7 +208,10 @@ export function useAudiobook(bookId: string | undefined) {
       return new Promise<void>((resolve) => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".mp3,.m4a,.m4b,.ogg,.opus,.aac";
+        // iOS/iPadOS Safari solo habilita archivos cuyo tipo MIME reconoce, no
+        // por extensión: sin "audio/*" deja el .m4b en gris. Las extensiones se
+        // mantienen para acotar el filtro en navegadores de escritorio.
+        input.accept = "audio/*,.mp3,.m4a,.m4b,.ogg,.opus,.aac";
         input.onchange = () => {
           const file = input.files?.[0];
           if (file) mountFile(file).then(resolve);
