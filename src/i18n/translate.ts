@@ -44,7 +44,7 @@ function interpolate(template: string, options?: TOptions): string {
 // Elige el sufijo de plural (_one, _other, _many…) según la lengua y el número.
 // Usa Intl.PluralRules (nativo del navegador), sin librerías.
 function pluralPath(path: string, count: number, language: string): string {
-  let category: Intl.LDMLPluralRule = "other";
+  let category: Intl.LDMLPluralRule;
   try {
     category = new Intl.PluralRules(language).select(count);
   } catch {

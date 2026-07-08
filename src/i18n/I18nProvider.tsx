@@ -109,6 +109,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // Si el idioma inicial detectado no es el por defecto, cárgalo al montar.
   useEffect(() => {
     if (language !== DEFAULT_LANGUAGE && !resources[language]) {
+      // Carga única en el montaje: el setState aquí es intencionado.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       changeLanguage(language);
     }
     // Solo en el montaje: la detección inicial es un evento único.
