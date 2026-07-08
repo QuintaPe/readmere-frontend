@@ -1,0 +1,7 @@
+{
+  "required": "Este campo es obligatorio",
+  "email": "Introduce un email válido",
+  "minLength": "Debe tener al menos {{count}} caracteres",
+  "passwordMinLength_one": "La contraseña debe tener al menos {{count}} carácter",
+  "passwordMinLength_other": "La contraseña debe tener al menos {{count}} caracteres"
+}

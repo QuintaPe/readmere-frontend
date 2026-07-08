@@ -1,0 +1,41 @@
+{
+  "sections": {
+    "account": "Cuenta",
+    "languages": "Idiomas",
+    "study": "Estudio",
+    "appearance": "Apariencia",
+    "ai": "Inteligencia Artificial"
+  },
+  "name": "Nombre",
+  "nameHint": "Cómo apareces en la app",
+  "namePlaceholder": "Tu nombre",
+  "interfaceLanguage": "Idioma de la interfaz",
+  "interfaceLanguageHint": "En qué idioma te habla la app",
+  "nativeLanguage": "Idioma nativo",
+  "targetLanguage": "Idioma que estudias",
+  "dailyGoal": "Meta diaria",
+  "dailyGoalHint": "Repasos y palabras añadidas",
+  "dailyGoalValue": "{{count}} acciones",
+  "newCardsPerDay": "Tarjetas nuevas por día",
+  "newCardsPerDayHint": "Límite de flashcards nuevas",
+  "newCardsPerDayValue": "{{count}} tarjetas",
+  "theme": {
+    "dark": "Oscuro",
+    "light": "Claro",
+    "system": "Sistema"
+  },
+  "ai": {
+    "activeBadge": "IA activa — las traducciones funcionan",
+    "missingTitle": "Sin clave de IA configurada",
+    "missingBody": "Sin ella no funciona lo principal: traducir palabras al tocarlas en el lector, ni completar fichas con fonética, ejemplos y sinónimos. Consigue una gratis abajo (tarda un minuto).",
+    "explanation": "La IA traduce las palabras que tocas mientras lees, rellena sus fichas (definición, ejemplo, fonética, sinónimos, nivel CEFR) y busca los datos de tus libros. Elige un servicio y pega su clave; solo se guarda en tu navegador, nunca en nuestro servidor.",
+    "service": "Servicio de IA",
+    "apiKeyLabel": "Clave API de {{provider}}",
+    "getKey": "Conseguir clave →"
+  },
+  "saveChanges": "Guardar cambios",
+  "saving": "Guardando...",
+  "signOut": "Cerrar sesión",
+  "saved": "Cambios guardados",
+  "saveError": "Error al guardar"
+}
