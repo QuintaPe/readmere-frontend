@@ -1,0 +1,25 @@
+{
+  "appName": "Readmere",
+  "tagline": "Learn languages",
+  "actions": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "create": "Create",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "continue": "Continue",
+    "retry": "Retry",
+    "search": "Search",
+    "goHome": "Home"
+  },
+  "states": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "empty": "Nothing here yet"
+  }
+}

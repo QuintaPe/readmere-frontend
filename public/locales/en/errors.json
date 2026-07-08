@@ -1,0 +1,6 @@
+{
+  "notFoundTitle": "Page not found",
+  "notFoundBody": "The page you're looking for doesn't exist.",
+  "generic": "Something went wrong",
+  "genericBody": "An unexpected error occurred. Please try again."
+}

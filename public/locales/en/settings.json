@@ -1,0 +1,41 @@
+{
+  "sections": {
+    "account": "Account",
+    "languages": "Languages",
+    "study": "Study",
+    "appearance": "Appearance",
+    "ai": "Artificial Intelligence"
+  },
+  "name": "Name",
+  "nameHint": "How you appear in the app",
+  "namePlaceholder": "Your name",
+  "interfaceLanguage": "Interface language",
+  "interfaceLanguageHint": "The language the app speaks to you in",
+  "nativeLanguage": "Native language",
+  "targetLanguage": "Language you study",
+  "dailyGoal": "Daily goal",
+  "dailyGoalHint": "Reviews and words added",
+  "dailyGoalValue": "{{count}} actions",
+  "newCardsPerDay": "New cards per day",
+  "newCardsPerDayHint": "New flashcard limit",
+  "newCardsPerDayValue": "{{count}} cards",
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
+  "ai": {
+    "activeBadge": "AI active — translations work",
+    "missingTitle": "No AI key configured",
+    "missingBody": "Without it the core feature doesn't work: translating words by tapping them in the reader, nor filling cards with phonetics, examples and synonyms. Get one free below (takes a minute).",
+    "explanation": "AI translates the words you tap while reading, fills in their cards (definition, example, phonetics, synonyms, CEFR level) and looks up your books' data. Pick a service and paste its key; it is only stored in your browser, never on our server.",
+    "service": "AI service",
+    "apiKeyLabel": "{{provider}} API key",
+    "getKey": "Get a key →"
+  },
+  "saveChanges": "Save changes",
+  "saving": "Saving...",
+  "signOut": "Sign out",
+  "saved": "Changes saved",
+  "saveError": "Save failed"
+}
