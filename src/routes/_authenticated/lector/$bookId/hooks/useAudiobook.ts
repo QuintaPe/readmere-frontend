@@ -208,10 +208,15 @@ export function useAudiobook(bookId: string | undefined) {
       return new Promise<void>((resolve) => {
         const input = document.createElement("input");
         input.type = "file";
-        // iOS/iPadOS Safari solo habilita archivos cuyo tipo MIME reconoce, no
-        // por extensión: sin "audio/*" deja el .m4b en gris. Las extensiones se
-        // mantienen para acotar el filtro en navegadores de escritorio.
-        input.accept = "audio/*,.mp3,.m4a,.m4b,.ogg,.opus,.aac";
+        // iOS asigna a la extensión .m4b la UTI "com.apple.protected-mpeg-4-audio"
+        // ("MPEG-4 protegido", aunque el archivo no tenga DRM) y esa UTI no encaja
+        // con ningún accept, así que Safari lo deja en gris. En iOS/iPadOS quitamos
+        // el filtro para poder elegirlo; el tipo se valida al montar. En escritorio
+        // mantenemos la lista para acotar el diálogo.
+        const isIOS =
+          /iP(ad|hone|od)/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        input.accept = isIOS ? "" : "audio/*,.mp3,.m4a,.m4b,.ogg,.opus,.aac";
         input.onchange = () => {
           const file = input.files?.[0];
           if (file) mountFile(file).then(resolve);
