@@ -1,0 +1,371 @@
+@import "tailwindcss" source(none);
+@source "..";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Puntero grueso (iPad, móvil, cualquier pantalla táctil). Permite engordar
+   zonas pulsables SOLO en táctil con `touch:` sin tocar el layout de ratón. */
+@custom-variant touch (@media (pointer: coarse));
+
+/* Zona pulsable mínima cómoda (~44px) para controles icónicos en táctil. */
+@utility tap-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Theming · tokens semánticos.
+   `:root`  → tema CLARO (por defecto sin la clase .dark).
+   `.dark`  → tema OSCURO (la clase la togglea lib/theme.ts en <html>).
+   Ambos temas comparten el índigo de marca (--primary) para no perder
+   la identidad; solo cambian superficies, texto y bordes.
+
+   Superficies compartidas y elevaciones se exponen como variables
+   (--elevated-from / --elevated-to / --glow) para que futuros temas
+   solo tengan que redefinir tokens, nunca reglas CSS.
+   ───────────────────────────────────────────────────────────────── */
+
+/* ── Tema claro (default) · fondo cálido casi blanco, índigo de marca ── */
+:root {
+  --radius: 0.625rem;
+
+  /* Fondos — blanco con un matiz violeta imperceptible */
+  --background:            oklch(0.99 0.003 265);
+  --foreground:            oklch(0.23 0.012 265);
+
+  --card:                  oklch(1 0 0);
+  --card-foreground:       oklch(0.23 0.012 265);
+
+  --popover:               oklch(1 0 0);
+  --popover-foreground:    oklch(0.23 0.012 265);
+
+  /* Índigo de marca — algo más profundo para contraste sobre blanco */
+  --primary:               oklch(0.55 0.21 265);
+  --primary-foreground:    oklch(0.99 0 0);
+
+  --secondary:             oklch(0.965 0.006 265);
+  --secondary-foreground:  oklch(0.32 0.012 265);
+
+  --muted:                 oklch(0.965 0.005 265);
+  --muted-foreground:      oklch(0.50 0.014 265);
+
+  --accent:                oklch(0.955 0.01 265);
+  --accent-foreground:     oklch(0.30 0.012 265);
+
+  --destructive:           oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success:               oklch(0.56 0.15 145);
+  --warning:               oklch(0.60 0.15 70);
+
+  --border:                oklch(0.90 0.006 265 / 90%);
+  --input:                 oklch(0.92 0.006 265);
+  --ring:                  oklch(0.55 0.21 265 / 45%);
+
+  --sidebar:               oklch(0.975 0.005 265);
+  --sidebar-foreground:    oklch(0.34 0.012 265);
+  --sidebar-primary:       oklch(0.55 0.21 265);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent:        oklch(0.94 0.01 265);
+  --sidebar-accent-foreground: oklch(0.28 0.012 265);
+  --sidebar-border:        oklch(0.90 0.006 265 / 80%);
+  --sidebar-ring:          oklch(0.55 0.21 265);
+
+  /* Superficies compartidas dependientes del tema */
+  --elevated-from:         oklch(1 0 0);
+  --elevated-to:           oklch(0.985 0.004 265);
+  --glow:                  oklch(0.62 0.21 265 / 0.10);
+}
+
+/* ── Tema oscuro · near-black con matiz violeta (paleta original) ── */
+.dark {
+  /* Backgrounds — near-black with a barely-perceptible violet undertone */
+  --background:            oklch(0.11 0.006 265);
+  --foreground:            oklch(0.97 0.004 265);
+
+  --card:                  oklch(0.15 0.008 265);
+  --card-foreground:       oklch(0.97 0.004 265);
+
+  --popover:               oklch(0.17 0.01 265);
+  --popover-foreground:    oklch(0.97 0.004 265);
+
+  /* Indigo accent — refined, not aggressive */
+  --primary:               oklch(0.62 0.21 265);
+  --primary-foreground:    oklch(0.99 0 0);
+
+  --secondary:             oklch(0.19 0.012 265);
+  --secondary-foreground:  oklch(0.88 0.006 265);
+
+  --muted:                 oklch(0.17 0.009 265);
+  --muted-foreground:      oklch(0.58 0.008 265);
+
+  --accent:                oklch(0.21 0.015 265);
+  --accent-foreground:     oklch(0.92 0.005 265);
+
+  --destructive:           oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success:               oklch(0.68 0.18 145);
+  --warning:               oklch(0.78 0.16 75);
+
+  --border:                oklch(0.24 0.01 265 / 65%);
+  --input:                 oklch(0.21 0.01 265);
+  --ring:                  oklch(0.62 0.21 265 / 60%);
+
+  --sidebar:               oklch(0.09 0.006 265);
+  --sidebar-foreground:    oklch(0.82 0.006 265);
+  --sidebar-primary:       oklch(0.62 0.21 265);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent:        oklch(0.18 0.012 265);
+  --sidebar-accent-foreground: oklch(0.92 0.005 265);
+  --sidebar-border:        oklch(0.2 0.009 265 / 60%);
+  --sidebar-ring:          oklch(0.62 0.21 265);
+
+  /* Superficies compartidas dependientes del tema */
+  --elevated-from:         oklch(0.16 0.009 265);
+  --elevated-to:           oklch(0.13 0.007 265);
+  --glow:                  oklch(0.45 0.2 265 / 0.18);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { background-color: var(--color-background); color: var(--color-foreground); }
+  body {
+    font-family: var(--font-display);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4 { letter-spacing: -0.02em; font-weight: 600; }
+}
+
+/* Subtle radial glow used on hero / dashboard — tinted by the theme */
+.hero-glow {
+  background:
+    radial-gradient(ellipse at 15% 0%, var(--glow), transparent 55%),
+    radial-gradient(ellipse at 85% 100%, var(--glow), transparent 55%);
+}
+
+.card-elevated {
+  background: linear-gradient(160deg, var(--elevated-from) 0%, var(--elevated-to) 100%);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Landing page animations ─────────────────────────────────── */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+.animate-landing-float   { animation: landing-float 5s ease-in-out infinite; }
+.animate-landing-float-b { animation: landing-float 6s ease-in-out 1.8s infinite; }
+.animate-landing-float-c { animation: landing-float 4.5s ease-in-out 0.9s infinite; }
+
+/* ── Landing · editorial layer over the app's indigo theme ────────
+   Keeps the platform's blue tokens; adds typographic / textural detail
+   that hand-made marketing pages have and AI templates skip. */
+
+/* One soft top glow instead of scattered blur-blobs.
+   Brightest point sits above the box and uses a mid stop so the falloff
+   is gradual — no hard ring or visible banding on the dark background. */
+.landing-glow {
+  background:
+    radial-gradient(130% 90% at 50% -32%,
+      oklch(0.62 0.21 265 / 0.13) 0%,
+      oklch(0.62 0.21 265 / 0.04) 40%,
+      transparent 72%);
+}
+
+/* Faint blueprint grid — fades out so it never reads as a "template" */
+.landing-grid {
+  background-image:
+    linear-gradient(oklch(0.62 0.21 265 / 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.62 0.21 265 / 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, black, transparent 72%);
+          mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, black, transparent 72%);
+}
+
+/* Faint paper grain — texture AI mockups never bother with */
+.landing-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Reader's pencil mark under a word — a thin underline that scales with
+   the type and skips descenders, not a heavy highlighter block. */
+.ink-underline {
+  text-decoration-line: underline;
+  text-decoration-color: oklch(0.62 0.21 265 / 0.55);
+  text-decoration-thickness: 0.055em;
+  text-underline-offset: 0.14em;
+  text-decoration-skip-ink: auto;
+}
+
+/* Hairline label used for section indexes */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* Book-style drop cap — opens body copy like a printed page */
+.dropcap::first-letter {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  float: left;
+  font-size: 3.05em;
+  line-height: 0.8;
+  margin: 0.06em 0.09em 0 0;
+  color: var(--color-primary);
+}
+
+/* Typographic asterism — the section ornament books use, AI never does */
+.asterism {
+  color: var(--color-muted-foreground);
+  letter-spacing: 0.5em;
+  font-size: 19px;
+  line-height: 1;
+}
+
+/* Restrained one-time entrance */
+@keyframes landing-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.landing-rise   { animation: landing-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.landing-rise-2 { animation: landing-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both; }
+
+/* Staggered entrance for the hero copy — each child rises a beat after the last */
+.hero-stagger > * { animation: landing-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.hero-stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.hero-stagger > *:nth-child(3) { animation-delay: 0.18s; }
+.hero-stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.hero-stagger > *:nth-child(5) { animation-delay: 0.34s; }
+
+/* The highlighted word breathes, inviting a tap */
+@keyframes word-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.62 0.21 265 / 0); }
+  50%      { box-shadow: 0 0 0 4px oklch(0.62 0.21 265 / 0.16); }
+}
+.word-pulse { animation: word-pulse 2.8s ease-in-out infinite; }
+
+/* Cursor that presses the word in time with its pulse */
+@keyframes cursor-tap {
+  0%, 42%, 100% { transform: scale(1); }
+  50%           { transform: scale(0.78); }
+  62%           { transform: scale(1); }
+}
+.cursor-tap { animation: cursor-tap 2.8s ease-in-out infinite; transform-origin: 22% 22%; }
+
+/* Reader word-lookup popup — rises from the bottom edge it's anchored to.
+   Only translateY here; horizontal centering is Tailwind's `translate` property
+   (-translate-x-1/2), a separate CSS property, so the two don't fight. */
+@keyframes popup-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.popup-rise { animation: popup-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-rise, .landing-rise-2, .hero-stagger > *, .word-pulse, .cursor-tap, .popup-rise { animation: none; }
+}
+
+/* ── View transitions ─────────────────────────────────────────────
+   Solo el área de contenido (`<main class="app-main">`) se nombra
+   "page", así el sidebar y la cabecera —capturados en `root`, sin
+   cambios— se quedan quietos mientras la página entra y sale. */
+main.app-main { view-transition-name: page; }
+
+/* Easing común (springy) para TODOS los grupos, incluida la portada
+   que viaja de la Biblioteca al Lector. */
+::view-transition-group(*) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Fade simple: la página saliente se desvanece y la entrante aparece.
+   Sin desplazamientos ni escalado. */
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+::view-transition-old(page) {
+  animation: vt-fade-out 0.2s ease both;
+}
+::view-transition-new(page) {
+  animation: vt-fade-in 0.28s ease both;
+}
+
+/* La portada del libro (name `book-cover-<id>`) usa el default de grupo:
+   morphea posición/tamaño de la miniatura al lector y cross-fadea la
+   imagen — ese es el "view transition guapo". */
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(page),
+  ::view-transition-new(page),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Custom scrollbar for epub reader */
+.epub-reader-scroll::-webkit-scrollbar { width: 6px; }
+.epub-reader-scroll::-webkit-scrollbar-track { background: transparent; }
+.epub-reader-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.62 0.21 265 / 0.35);
+  border-radius: 999px;
+}
+.epub-reader-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.62 0.21 265 / 0.65);
+}
