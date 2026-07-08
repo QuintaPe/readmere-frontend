@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Anti-FOUC: fija el tema ANTES del primer paint leyendo localStorage.
+         Debe seguir la misma lógica que src/lib/theme.ts (clave "theme",
+         default "dark"). Inline y síncrono a propósito: no puede diferirse. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme") || "dark";
+          var dark = t === "dark" || (t === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Readmere — Aprende idiomas con tus propios libros</title>
+    <meta name="description" content="Dashboard, vocabulario con repetición espaciada, flashcards y lector EPUB con traducción IA al instante." />
+    <meta name="theme-color" content="#5b6cff" />
+
+    <!-- Open Graph / Twitter. NOTA: og:image/og:url deberían ser URLs
+         ABSOLUTAS en producción (p. ej. https://readmere.com/og.png).
+         Al no haber dominio aún, se dejan relativas; actualízalas al desplegar. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Readmere" />
+    <meta property="og:title" content="Readmere — Aprende un idioma sin dejar de leer" />
+    <meta property="og:description" content="Convierte cualquier EPUB en tu método: toca una palabra, entiéndela en contexto con IA y repásala con flashcards justo antes de olvidarla." />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Readmere — Aprende un idioma sin dejar de leer" />
+    <meta name="twitter:description" content="Convierte cualquier EPUB en tu método: toca una palabra, entiéndela en contexto con IA y repásala con flashcards justo antes de olvidarla." />
+    <meta name="twitter:image" content="/og.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
