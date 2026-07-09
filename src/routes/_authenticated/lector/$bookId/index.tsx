@@ -39,45 +39,72 @@ import AudiobookPlayer from "./components/AudiobookPlayer";
 import { useAudiobook } from "./hooks/useAudiobook";
 
 // ===== DIAGNÓSTICO TEMPORAL (iPad): quitar tras depurar =====
-// Cuenta qué eventos llegan DENTRO del iframe de epub.js y los pinta en un HUD
-// fijo en el documento padre. Comprueba window vs document para el táctil.
+// Cuenta qué eventos llegan al IFRAME de epub.js y, por separado, al documento
+// PADRE, y muestra qué elemento recibe el toque y el pointer-events del iframe.
+const lcDbg: Record<string, number> = {};
+let lcDbgTgt = "";
+let lcDbgSel = "";
+function lcDbgRender() {
+  const hud = document.getElementById("lc-touch-hud");
+  if (!hud) return;
+  const ifr = document.querySelector(".epub-container iframe") as HTMLIFrameElement | null;
+  const n = document.querySelectorAll(".epub-container iframe").length;
+  const pe = ifr ? getComputedStyle(ifr).pointerEvents : "-";
+  const c = (k: string) => lcDbg[k] || 0;
+  hud.textContent =
+    "TOUCH HUD v2 (build OK)\n" +
+    `IFRAME ts:${c("i.ts")} tm:${c("i.tm")} te:${c("i.te")} tc:${c("i.tc")} pd:${c("i.pd")} mu:${c("i.mu")} sc:${c("i.sc")} clk:${c("i.clk")}\n` +
+    `PARENT ts:${c("p.ts")} pd:${c("p.pd")} mu:${c("p.mu")} sc:${c("p.sc")} clk:${c("p.clk")}\n` +
+    `iframes=${n} pe=${pe}\n` +
+    `tgt=${lcDbgTgt}\n` +
+    `psel="${lcDbgSel}"`;
+}
+function lcBump(k: string) { lcDbg[k] = (lcDbg[k] || 0) + 1; lcDbgRender(); }
+
+let lcParentDbgDone = false;
+function installParentTouchDebug() {
+  if (lcParentDbgDone) return;
+  lcParentDbgDone = true;
+  const hud = document.createElement("div");
+  hud.id = "lc-touch-hud";
+  hud.style.cssText = [
+    "position:fixed", "left:6px", "bottom:6px", "z-index:2147483647",
+    "background:rgba(0,0,0,0.82)", "color:#0f0", "font:10px/1.35 monospace",
+    "padding:6px 8px", "border-radius:6px", "max-width:92vw",
+    "white-space:pre-wrap", "pointer-events:none",
+  ].join(";");
+  document.body.appendChild(hud);
+  const tgtInfo = (t: EventTarget | null) => {
+    const el = t as HTMLElement | null;
+    if (!el || !el.tagName) return String(t);
+    return `${el.tagName.toLowerCase()}.${(el.className || "").toString().slice(0, 24)}`;
+  };
+  document.addEventListener("touchstart", (e) => { lcDbgTgt = tgtInfo(e.target); lcBump("p.ts"); }, { capture: true, passive: true });
+  document.addEventListener("pointerdown", (e) => { lcDbgTgt = tgtInfo(e.target); lcBump("p.pd"); }, { capture: true, passive: true });
+  document.addEventListener("mouseup", () => lcBump("p.mu"), { capture: true, passive: true });
+  document.addEventListener("click", () => lcBump("p.clk"), { capture: true, passive: true });
+  document.addEventListener("selectionchange", () => {
+    lcDbgSel = window.getSelection()?.toString().trim().slice(0, 24) ?? "";
+    lcBump("p.sc");
+  });
+  lcDbgRender();
+}
+
 function installTouchDebugHud(doc: Document, win: Window) {
   try {
-    const counts: Record<string, number> = {};
-    let hud = document.getElementById("lc-touch-hud") as HTMLDivElement | null;
-    if (!hud) {
-      hud = document.createElement("div");
-      hud.id = "lc-touch-hud";
-      hud.style.cssText = [
-        "position:fixed", "left:6px", "bottom:6px", "z-index:2147483647",
-        "background:rgba(0,0,0,0.82)", "color:#0f0", "font:11px/1.4 monospace",
-        "padding:6px 8px", "border-radius:6px", "max-width:80vw",
-        "white-space:pre-wrap", "pointer-events:none",
-      ].join(";");
-      document.body.appendChild(hud);
-    }
-    const render = (extra = "") => {
-      const order = ["ts(doc)", "ts(win)", "tm", "te", "tc", "pd", "mu", "sc", "clk"];
-      hud!.textContent =
-        "TOUCH HUD (build nuevo OK)\n" +
-        order.map((k) => `${k}:${counts[k] || 0}`).join("  ") +
-        (extra ? `\n${extra}` : "");
-    };
-    const bump = (k: string, extra = "") => { counts[k] = (counts[k] || 0) + 1; render(extra); };
-
-    doc.addEventListener("touchstart", () => bump("ts(doc)"), { passive: true });
-    win.addEventListener("touchstart", () => bump("ts(win)"), { passive: true });
-    doc.addEventListener("touchmove", () => bump("tm"), { passive: true });
-    doc.addEventListener("touchend", () => bump("te"), { passive: true });
-    doc.addEventListener("touchcancel", () => bump("tc"), { passive: true });
-    doc.addEventListener("pointerdown", (e) => bump("pd", `pointerType=${(e as PointerEvent).pointerType}`), { passive: true });
-    doc.addEventListener("mouseup", () => bump("mu"), { passive: true });
+    installParentTouchDebug();
+    doc.addEventListener("touchstart", () => lcBump("i.ts"), { passive: true });
+    doc.addEventListener("touchmove", () => lcBump("i.tm"), { passive: true });
+    doc.addEventListener("touchend", () => lcBump("i.te"), { passive: true });
+    doc.addEventListener("touchcancel", () => lcBump("i.tc"), { passive: true });
+    doc.addEventListener("pointerdown", () => lcBump("i.pd"), { passive: true });
+    doc.addEventListener("mouseup", () => lcBump("i.mu"), { passive: true });
     doc.addEventListener("selectionchange", () => {
-      const s = win.getSelection()?.toString().trim().slice(0, 30) ?? "";
-      bump("sc", `sel="${s}"`);
+      lcDbgSel = win.getSelection()?.toString().trim().slice(0, 24) ?? "";
+      lcBump("i.sc");
     });
-    doc.addEventListener("click", () => bump("clk"), { passive: true });
-    render();
+    doc.addEventListener("click", () => lcBump("i.clk"), { passive: true });
+    lcDbgRender();
   } catch { /* noop */ }
 }
 // ============================================================
