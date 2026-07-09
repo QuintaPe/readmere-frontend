@@ -30,9 +30,12 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Handler extra que sirve audiolibros de OPFS con soporte Range
+        // (streaming en iPad). Se ejecuta dentro del SW generado por Workbox.
+        importScripts: ["/opfs-sw.js"],
         navigateFallback: "/index.html",
-        // La API nunca debe caer en el fallback de navegación
-        navigateFallbackDenylist: [/^\/api\//],
+        // La API y el audio de OPFS nunca deben caer en el fallback de navegación
+        navigateFallbackDenylist: [/^\/api\//, /^\/opfs-audio\//],
         runtimeCaching: [
           {
             // EPUBs de Supabase Storage: pesados e inmutables → cache first

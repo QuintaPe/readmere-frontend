@@ -5,6 +5,8 @@ import {
   loadFileFromOPFS,
   removeFileFromOPFS,
   opfsSupported,
+  audioMimeFor,
+  opfsAudioStreamUrl,
 } from "../lib/audiobook-storage";
 import { parseM4BChapters, type AudioChapter } from "../lib/m4b-chapters";
 import { audiobookKeys, clearAudiobookStorage } from "../lib/audiobook-keys";
@@ -66,6 +68,18 @@ export function useAudiobook(bookId: string | undefined) {
     currentChapterIdx: 0,
   });
 
+  // Restore saved position — wait for enough data to seek
+  const restorePosition = useCallback((audio: HTMLAudioElement) => {
+    if (!posKey) return;
+    const saved = parseFloat(localStorage.getItem(posKey) ?? "");
+    if (!isNaN(saved) && saved > 0) {
+      audio.addEventListener("canplay", function seek() {
+        audio.removeEventListener("canplay", seek);
+        audio.currentTime = saved;
+      });
+    }
+  }, [posKey]);
+
   const mountFile = useCallback(async (file: File, skipOPFSSave = false) => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const url = URL.createObjectURL(file);
@@ -76,16 +90,7 @@ export function useAudiobook(bookId: string | undefined) {
     audio.src = url;
     audio.load();
 
-    // Restore saved position — wait for enough data to seek
-    if (posKey) {
-      const saved = parseFloat(localStorage.getItem(posKey) ?? "");
-      if (!isNaN(saved) && saved > 0) {
-        audio.addEventListener("canplay", function seek() {
-          audio.removeEventListener("canplay", seek);
-          audio.currentTime = saved;
-        });
-      }
-    }
+    restorePosition(audio);
 
     if (fileNameKey) localStorage.setItem(fileNameKey, file.name);
     setState((s) => ({
@@ -137,17 +142,86 @@ export function useAudiobook(bookId: string | undefined) {
     } catch (e) {
       console.warn("[Audiobook] No se pudieron leer los capítulos:", e);
     }
-  }, [bookId]);
+  }, [bookId, fileNameKey, restorePosition]);
+
+  // Camino rápido (iPad): monta el audio como streaming servido por el service
+  // worker con soporte Range, sin leer el archivo entero a memoria. Devuelve
+  // true si lo consiguió; false si hay que recurrir al blob URL clásico.
+  const mountFromServiceWorker = useCallback(async (): Promise<boolean> => {
+    if (!bookId) return false;
+    const savedName = fileNameKey ? localStorage.getItem(fileNameKey) : null;
+    const url = await opfsAudioStreamUrl(bookId, audioMimeFor(savedName ?? ""));
+    if (!url) return false;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+    if (!audioRef.current) audioRef.current = new Audio();
+    const audio = audioRef.current;
+    audio.src = url;
+    audio.load();
+    restorePosition(audio);
+
+    setState((s) => ({
+      ...s,
+      hasFile: true,
+      needsPermission: false,
+      savedFileName: savedName,
+      opfsSaving: false,
+      opfsSaveProgress: 0,
+      fileName: savedName,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      chapters: [],
+      currentChapterIdx: 0,
+    }));
+
+    // Capítulos: desde caché al instante; si faltan, se parsean en segundo
+    // plano leyendo de OPFS (sin bloquear la reproducción).
+    const chaptersKey = audiobookKeys(bookId).chapters;
+    const cached = localStorage.getItem(chaptersKey);
+    let restored = false;
+    if (cached) {
+      try {
+        const chapters: AudioChapter[] = JSON.parse(cached);
+        if (chapters.length > 0) {
+          setState((s) => ({ ...s, chapters }));
+          restored = true;
+        }
+      } catch { /* noop */ }
+    }
+    if (!restored) {
+      loadFileFromOPFS(bookId).then(async (file) => {
+        if (!file) return;
+        try {
+          const chapters = await parseM4BChapters(file);
+          if (chapters.length > 0) {
+            localStorage.setItem(chaptersKey, JSON.stringify(chapters));
+            setState((s) => ({ ...s, chapters }));
+          }
+        } catch { /* noop */ }
+      }).catch(() => { });
+    }
+    return true;
+  }, [bookId, fileNameKey, restorePosition]);
 
   // Auto-restore from OPFS if available
   useEffect(() => {
-    if (!bookId || !opfsSupported()) return;
+    if (!bookId) return;
     let cancelled = false;
-    loadFileFromOPFS(bookId).then((file) => {
+    (async () => {
+      // Preferimos streaming por el SW (rápido en iPad); si no está disponible
+      // (p. ej. en dev, o SW aún sin controlar la pestaña) leemos el archivo.
+      const streamed = await mountFromServiceWorker();
+      if (streamed || cancelled) return;
+      if (!opfsSupported()) return;
+      const file = await loadFileFromOPFS(bookId).catch(() => null);
       if (file && !cancelled) mountFile(file, true);
-    }).catch(() => { });
+    })();
     return () => { cancelled = true; };
-  }, [bookId, mountFile]);
+  }, [bookId, mountFromServiceWorker, mountFile]);
 
   // Sync <audio> events → state + track current chapter
   useEffect(() => {
