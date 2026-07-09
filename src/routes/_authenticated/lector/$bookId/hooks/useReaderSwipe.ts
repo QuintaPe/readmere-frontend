@@ -45,6 +45,7 @@ export function useReaderSwipe(
     let y = 0;
     let t = 0;
     let active = false;
+    let fired = false; // ya se disparó el cambio de capítulo en este gesto
     // target es Window | HTMLElement: addEventListener no infiere TouchEvent en
     // esa unión, así que tipamos como Event y casteamos dentro.
     const onStart = (ev: Event) => {
@@ -57,10 +58,32 @@ export function useReaderSwipe(
       y = e.touches[0].clientY;
       t = Date.now();
       active = true;
+      fired = false;
+    };
+    // Detectamos el swipe en movimiento (no al soltar): en iOS un arrastre
+    // horizontal sobre texto lo secuestra el navegador para SELECCIONAR y
+    // emite `touchcancel` en vez de `touchend`, por lo que esperar a onEnd
+    // nunca disparaba. En cuanto el eje X domina, cancelamos el gesto nativo
+    // (preventDefault) y cambiamos de capítulo una sola vez.
+    const onMove = (ev: Event) => {
+      if (!active || fired) return;
+      const touch = (ev as TouchEvent).touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - x;
+      const dy = touch.clientY - y;
+      if (Math.abs(dx) < Math.abs(dy) * AXIS_RATIO) return; // gesto vertical → scroll nativo
+      const e = ev as TouchEvent;
+      if (e.cancelable) e.preventDefault(); // bloquea selección/scroll horizontal nativo
+      if (Math.abs(dx) >= MIN_X && Date.now() - t <= MAX_MS) {
+        fired = true;
+        if (dx > 0) actionsRef.current.prevChapter();
+        else actionsRef.current.nextChapter();
+      }
     };
     const onEnd = (ev: Event) => {
       if (!active) return;
       active = false;
+      if (fired) return; // ya lo resolvió onMove
       const touch = (ev as TouchEvent).changedTouches[0];
       if (!touch) return;
       detectSwipe(
@@ -71,10 +94,16 @@ export function useReaderSwipe(
       );
     };
     target.addEventListener("touchstart", onStart, { passive: true });
+    // passive:false para poder preventDefault cuando el swipe es horizontal.
+    target.addEventListener("touchmove", onMove, { passive: false });
     target.addEventListener("touchend", onEnd, { passive: true });
+    // iOS emite touchcancel al tomar el control del gesto: lo tratamos igual.
+    target.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
       target.removeEventListener("touchstart", onStart);
+      target.removeEventListener("touchmove", onMove);
       target.removeEventListener("touchend", onEnd);
+      target.removeEventListener("touchcancel", onEnd);
     };
   }, []);
 

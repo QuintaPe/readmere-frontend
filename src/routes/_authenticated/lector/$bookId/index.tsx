@@ -413,7 +413,7 @@ export default function Reader() {
       }
     });
 
-    doc.addEventListener("mouseup", () => {
+    const handleSelection = () => {
       const sel = win.getSelection();
       const text = sel?.toString().trim() ?? "";
       if (!text || text.length < 2 || text.length > 80 || /\s{2,}/.test(text)) return;
@@ -425,6 +425,25 @@ export default function Reader() {
       }
       openLookup(text, context, bookLanguageRef.current);
       sel?.removeAllRanges();
+    };
+
+    // Escritorio: al soltar el ratón, inmediato.
+    doc.addEventListener("mouseup", handleSelection);
+
+    // Táctil (iPad/móvil): iOS no emite un `mouseup` fiable al terminar una
+    // selección con las asas nativas, así que escuchamos `selectionchange` con
+    // debounce (se dispara al asentarse la selección, no mientras se arrastra).
+    // Sólo para toque/lápiz: en ratón ya lo cubre `mouseup`, y así evitamos que
+    // el popup salte a media selección de escritorio.
+    let touchSelecting = false;
+    doc.addEventListener("pointerdown", (e: PointerEvent) => {
+      touchSelecting = e.pointerType === "touch" || e.pointerType === "pen";
+    }, { passive: true });
+    let selTimer: ReturnType<typeof setTimeout> | undefined;
+    doc.addEventListener("selectionchange", () => {
+      if (!touchSelecting) return;
+      clearTimeout(selTimer);
+      selTimer = setTimeout(handleSelection, 450);
     });
 
     win.addEventListener("scroll", () => {
