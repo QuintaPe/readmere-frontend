@@ -163,7 +163,13 @@ export function useEpubBook({ bookId, userId, viewerRef, events }: UseEpubBookOp
         height: ch,
         spread: "none",
         flow: "scrolled",
-        allowScriptedContent: false,
+        // En iOS/iPadOS, un iframe con sandbox sin `allow-scripts`
+        // (allowScriptedContent:false) NO despacha eventos táctiles/ratón/
+        // selección a JS, así que el swipe de capítulo y la traducción al
+        // seleccionar no funcionaban. Habilitar el scripting del iframe
+        // restaura esos eventos. Los EPUBs son de confianza (los añade el
+        // propio usuario).
+        allowScriptedContent: true,
       });
       renditionRef.current = rendition;
 
