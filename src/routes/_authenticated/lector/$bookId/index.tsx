@@ -38,6 +38,50 @@ import WordLookupPopup from "./components/WordLookupPopup";
 import AudiobookPlayer from "./components/AudiobookPlayer";
 import { useAudiobook } from "./hooks/useAudiobook";
 
+// ===== DIAGNÓSTICO TEMPORAL (iPad): quitar tras depurar =====
+// Cuenta qué eventos llegan DENTRO del iframe de epub.js y los pinta en un HUD
+// fijo en el documento padre. Comprueba window vs document para el táctil.
+function installTouchDebugHud(doc: Document, win: Window) {
+  try {
+    const counts: Record<string, number> = {};
+    let hud = document.getElementById("lc-touch-hud") as HTMLDivElement | null;
+    if (!hud) {
+      hud = document.createElement("div");
+      hud.id = "lc-touch-hud";
+      hud.style.cssText = [
+        "position:fixed", "left:6px", "bottom:6px", "z-index:2147483647",
+        "background:rgba(0,0,0,0.82)", "color:#0f0", "font:11px/1.4 monospace",
+        "padding:6px 8px", "border-radius:6px", "max-width:80vw",
+        "white-space:pre-wrap", "pointer-events:none",
+      ].join(";");
+      document.body.appendChild(hud);
+    }
+    const render = (extra = "") => {
+      const order = ["ts(doc)", "ts(win)", "tm", "te", "tc", "pd", "mu", "sc", "clk"];
+      hud!.textContent =
+        "TOUCH HUD (build nuevo OK)\n" +
+        order.map((k) => `${k}:${counts[k] || 0}`).join("  ") +
+        (extra ? `\n${extra}` : "");
+    };
+    const bump = (k: string, extra = "") => { counts[k] = (counts[k] || 0) + 1; render(extra); };
+
+    doc.addEventListener("touchstart", () => bump("ts(doc)"), { passive: true });
+    win.addEventListener("touchstart", () => bump("ts(win)"), { passive: true });
+    doc.addEventListener("touchmove", () => bump("tm"), { passive: true });
+    doc.addEventListener("touchend", () => bump("te"), { passive: true });
+    doc.addEventListener("touchcancel", () => bump("tc"), { passive: true });
+    doc.addEventListener("pointerdown", (e) => bump("pd", `pointerType=${(e as PointerEvent).pointerType}`), { passive: true });
+    doc.addEventListener("mouseup", () => bump("mu"), { passive: true });
+    doc.addEventListener("selectionchange", () => {
+      const s = win.getSelection()?.toString().trim().slice(0, 30) ?? "";
+      bump("sc", `sel="${s}"`);
+    });
+    doc.addEventListener("click", () => bump("clk"), { passive: true });
+    render();
+  } catch { /* noop */ }
+}
+// ============================================================
+
 export default function Reader() {
   const { bookId } = useParams();
   const { user } = useAuth();
@@ -371,6 +415,12 @@ export default function Reader() {
   function handleContentDocument(doc: Document, win: Window) {
     highlightSavedInDoc(doc);
     highlightPhrasesInDoc(doc, bookmarkPhrasesRef.current);
+
+    // ---- DIAGNÓSTICO TEMPORAL (quitar tras depurar iPad) ----
+    // HUD en el documento PADRE que cuenta qué eventos táctiles llegan DENTRO
+    // del iframe de epub.js. Si lo ves en pantalla, el build nuevo está cargado.
+    installTouchDebugHud(doc, win);
+    // ---------------------------------------------------------
 
     doc.addEventListener("click", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
