@@ -29,6 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 // La etiqueta es una clave del namespace `nav`; se traduce al renderizar.
 const navItems = [
@@ -45,6 +46,13 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation(["nav", "common"]);
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // En móvil el sidebar es un panel superpuesto: al navegar a otra página hay
+  // que cerrarlo (si no, se queda abierto tapando el contenido nuevo).
+  useEffect(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [pathname, isMobile, setOpenMobile]);
 
   // Repasos vencidos, para el badge de Flashcards. Se refresca al cambiar de
   // página (barato: la query usa el índice user_id+srs_due y suele traer poco).

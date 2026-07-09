@@ -1,6 +1,8 @@
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+// Hasta tablet (incl. iPad en vertical) el sidebar va off-canvas tras el botón
+// del header en vez de acoplado; solo se acopla en pantallas anchas (>=1024).
+const MOBILE_BREAKPOINT = 1024;
 
 export function useIsMobile() {
   // Valor correcto desde el primer render (antes arrancaba en undefined y un

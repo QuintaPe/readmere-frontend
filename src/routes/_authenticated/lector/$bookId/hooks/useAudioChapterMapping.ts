@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { mapChaptersByAI } from "@/lib/ai.functions";
+import { mapChaptersByAI, activeAiProvider } from "@/lib/ai.functions";
 import { toast } from "sonner";
 import { audiobookKeys } from "../lib/audiobook-keys";
 import type { Chapter } from "@/types/reader";
@@ -175,10 +175,19 @@ export function useAudioChapterMapping({
           setAiChapterTitles(result.titles);
         }
         toast.success("Capítulos sincronizados con IA");
+      } else if (activeAiProvider()) {
+        // Hay proveedor configurado pero la IA no devolvió un mapeo usable: en
+        // vez de quedarnos mudos, avisamos (antes parecía que "no hacía nada").
+        toast.error(
+          "La IA no pudo sincronizar los capítulos. Prueba de nuevo o con otro proveedor en Ajustes.",
+        );
       }
     }).catch(() => {
       if (cancelled) return;
       setChapterMappingLoading(false);
+      if (activeAiProvider()) {
+        toast.error("Error al sincronizar los capítulos con IA.");
+      }
     });
 
     return () => { cancelled = true; };

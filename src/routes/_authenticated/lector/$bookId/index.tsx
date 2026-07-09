@@ -1,6 +1,7 @@
 import { useAuth } from "@/auth/auth-context";
 import { useSidebar } from "@/components/ui/sidebar";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation, useOutletContext } from "react-router-dom";
+import type { ProtectedOutletContext } from "@/routes/_authenticated/route";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useAudioCursor } from "./hooks/useAudioCursor";
 import { useFollowScroll } from "./hooks/useFollowScroll";
@@ -12,6 +13,7 @@ import { useWordLookup } from "./hooks/useWordLookup";
 import { useEpubSearch } from "./hooks/useEpubSearch";
 import { useEpubBook } from "./hooks/useEpubBook";
 import { useReaderKeyboard, type ReaderPanel } from "./hooks/useReaderKeyboard";
+import { useReaderSwipe } from "./hooks/useReaderSwipe";
 import { Button } from "@/components/ui/button";
 import { Loader2, Locate, BookOpen } from "lucide-react";
 
@@ -59,6 +61,14 @@ export default function Reader() {
   const lastScrollYRef = useRef(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+
+  // En pantalla completa ocultamos la cabecera y el sidebar del layout (si no,
+  // se pintan por encima del lector). Al desmontar, restauramos el chrome.
+  const { setChromeHidden } = useOutletContext<ProtectedOutletContext>();
+  useEffect(() => {
+    setChromeHidden(fullscreen);
+    return () => setChromeHidden(false);
+  }, [fullscreen, setChromeHidden]);
   const bookmarkJumpingRef = useRef(false);
 
   // Todo el ciclo de vida del EPUB (metadata, caché, epub.js, progreso,
@@ -267,7 +277,7 @@ export default function Reader() {
     // Los paneles acoplados (lg) encogen el visor: hay que reflow-ar epub.js
     // igual que al animar el sidebar. En overlay (<lg) el visor no cambia de
     // ancho, así que este resize es un no-op inofensivo.
-  }, [sidebarState, renditionRef, showSearch, showBookmarks, showSettings, showToc]);
+  }, [sidebarState, fullscreen, renditionRef, showSearch, showBookmarks, showSettings, showToc]);
 
   function applySettings(s: ReaderSettings) {
     const r = renditionRef.current;
@@ -288,35 +298,57 @@ export default function Reader() {
     });
   }
 
-  const navigateChapter = useCallback((href: string) => {
+  // Fundido común a TODO cambio de capítulo (con o sin audiolibro): oscurece el
+  // visor, ejecuta la acción tras el fade-out y deja que el evento "rendered"
+  // reponga la opacidad. Red de seguridad por si "rendered" no llega (p. ej. un
+  // capítulo de audio que cae en el mismo capítulo del EPUB): repone igualmente.
+  const withChapterTransition = useCallback((action: () => void) => {
     setTransitioning(true);
-    setTimeout(() => { renditionRef.current?.display(href); }, 250);
-  }, [renditionRef]);
+    setTimeout(() => {
+      action();
+      setTimeout(() => setTransitioning(false), 450);
+    }, 250);
+  }, []);
+
+  const navigateChapter = useCallback((href: string) => {
+    withChapterTransition(() => renditionRef.current?.display(href));
+  }, [withChapterTransition, renditionRef]);
 
   // When audiobook is active with chapters, it becomes the primary navigation
   const audioActive = audiobookState.hasFile && audiobookState.chapters.length > 0;
 
   const prevChapter = useCallback(() => {
     if (audioActive) {
-      audiobookControls.goToChapter(Math.max(0, audiobookState.currentChapterIdx - 1));
+      withChapterTransition(() =>
+        audiobookControls.goToChapter(
+          Math.max(0, audiobookState.currentChapterIdx - 1),
+        ),
+      );
       return;
     }
     const chs = chaptersRef.current;
     const idx = currentChapterIdxRef.current;
     const next = Math.max(0, idx - 1);
     if (chs[next]) navigateChapter(chs[next].href);
-  }, [navigateChapter, audioActive, audiobookState.currentChapterIdx, audiobookControls, chaptersRef, currentChapterIdxRef]);
+  }, [navigateChapter, withChapterTransition, audioActive, audiobookState.currentChapterIdx, audiobookControls, chaptersRef, currentChapterIdxRef]);
 
   const nextChapter = useCallback(() => {
     if (audioActive) {
-      audiobookControls.goToChapter(Math.min(audiobookState.chapters.length - 1, audiobookState.currentChapterIdx + 1));
+      withChapterTransition(() =>
+        audiobookControls.goToChapter(
+          Math.min(
+            audiobookState.chapters.length - 1,
+            audiobookState.currentChapterIdx + 1,
+          ),
+        ),
+      );
       return;
     }
     const chs = chaptersRef.current;
     const idx = currentChapterIdxRef.current;
     const next = Math.min(chs.length - 1, idx + 1);
     if (chs[next]) navigateChapter(chs[next].href);
-  }, [navigateChapter, audioActive, audiobookState.currentChapterIdx, audiobookState.chapters.length, audiobookControls, chaptersRef, currentChapterIdxRef]);
+  }, [navigateChapter, withChapterTransition, audioActive, audiobookState.currentChapterIdx, audiobookState.chapters.length, audiobookControls, chaptersRef, currentChapterIdxRef]);
 
   // Mismo mapa de teclas para window y para los iframes de los capítulos.
   const { attachIframeKeys } = useReaderKeyboard({
@@ -325,6 +357,12 @@ export default function Reader() {
     togglePanel,
     toggleFullscreen,
     exitFullscreen: () => setFullscreen(false),
+  });
+
+  // En táctil (iPad/móvil): deslizar horizontalmente cambia de capítulo.
+  const { attachIframeSwipe } = useReaderSwipe(viewerRef, {
+    prevChapter,
+    nextChapter,
   });
 
   // Por cada documento de capítulo que epub.js renderiza: resaltados de
@@ -405,7 +443,10 @@ export default function Reader() {
   }
 
   function handleRendered() {
-    if (viewerRef.current) attachIframeKeys(viewerRef.current);
+    if (viewerRef.current) {
+      attachIframeKeys(viewerRef.current);
+      attachIframeSwipe(viewerRef.current);
+    }
     applyBookmarkAnnotations();
     if (!bookmarkJumpingRef.current) setTransitioning(false);
   }
@@ -535,10 +576,13 @@ export default function Reader() {
             onClose={() => setShowToc(false)}
             onGoToChapter={(href) => {
               setShowToc(false);
+              // Misma transición con fundido en ambos modos.
               if (audioActive) {
-                audiobookControls.goToChapter(Number(href));
+                withChapterTransition(() =>
+                  audiobookControls.goToChapter(Number(href)),
+                );
               } else {
-                renditionRef.current?.display(href);
+                navigateChapter(href);
               }
             }}
           />

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { refreshTokenIfNeeded } from "@/modules/auth";
 import { AuthContext } from "@/auth/auth-context";
 import { useSessionGuard } from "@/auth/useSessionGuard";
@@ -36,8 +36,16 @@ function ImpersonationBanner() {
   );
 }
 
+// El lector, en pantalla completa, oculta la cabecera y el sidebar (que si no
+// se pintan por encima, porque `main.app-main` crea un contexto de apilamiento
+// con view-transition-name). Se comunica vía el context del Outlet.
+export interface ProtectedOutletContext {
+  setChromeHidden: (hidden: boolean) => void;
+}
+
 export default function ProtectedRoute() {
   const { isAuthenticated, user } = useSessionGuard();
+  const [chromeHidden, setChromeHidden] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -61,18 +69,20 @@ export default function ProtectedRoute() {
 
   return (
     <AuthContext.Provider value={{ user }}>
-      <ImpersonationBanner />
+      {!chromeHidden && <ImpersonationBanner />}
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <AppSidebar />
+          {!chromeHidden && <AppSidebar />}
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex h-12 items-center gap-2 border-b border-border bg-background/60 px-3 backdrop-blur">
-              <SidebarTrigger />
-              <span className="text-sm text-muted-foreground">Readmere</span>
-              <GlobalSearch />
-            </header>
+            {!chromeHidden && (
+              <header className="flex h-12 items-center gap-2 border-b border-border bg-background/60 px-3 backdrop-blur">
+                <SidebarTrigger />
+                <span className="text-sm text-muted-foreground">Readmere</span>
+                <GlobalSearch />
+              </header>
+            )}
             <main className="app-main min-w-0 flex-1">
-              <Outlet />
+              <Outlet context={{ setChromeHidden } satisfies ProtectedOutletContext} />
             </main>
           </div>
         </div>

@@ -65,7 +65,7 @@ export const AI_PROVIDERS: AiProviderDef[] = [
     label: "OpenRouter",
     kind: "openai",
     baseUrl: "https://openrouter.ai/api/v1",
-    model: "cohere/north-mini-code:free",
+    model: "openrouter/free",
     keyUrl: "https://openrouter.ai/keys",
     placeholder: "sk-or-...",
     note: "muchos modelos",
