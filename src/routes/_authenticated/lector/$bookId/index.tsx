@@ -36,11 +36,15 @@ import SettingsPanel from "./components/SettingsPanel";
 import AddBookmarkDialog from "./components/AddBookmarkDialog";
 import WordLookupPopup from "./components/WordLookupPopup";
 import AudiobookPlayer from "./components/AudiobookPlayer";
+import AudiobookMode from "./components/AudiobookMode";
 import { useAudiobook } from "./hooks/useAudiobook";
+import { useSleepTimer, sleepTimerLabel } from "./hooks/useSleepTimer";
+import { useIsPhone } from "@/hooks/use-mobile";
 
 export default function Reader() {
   const { bookId } = useParams();
   const { user } = useAuth();
+  const isPhone = useIsPhone();
 
   // La Biblioteca pasa la portada por `state` para que esté disponible en el
   // primer render y el shared-element (`book-cover-<id>`) case sin esperar al
@@ -60,15 +64,10 @@ export default function Reader() {
   const [toolbarVisible, setToolbarVisible] = useState(true);
   const lastScrollYRef = useRef(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const [audioOnlyMode, setAudioOnlyMode] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
-  // En pantalla completa ocultamos la cabecera y el sidebar del layout (si no,
-  // se pintan por encima del lector). Al desmontar, restauramos el chrome.
   const { setChromeHidden } = useOutletContext<ProtectedOutletContext>();
-  useEffect(() => {
-    setChromeHidden(fullscreen);
-    return () => setChromeHidden(false);
-  }, [fullscreen, setChromeHidden]);
   const bookmarkJumpingRef = useRef(false);
 
   // Todo el ciclo de vida del EPUB (metadata, caché, epub.js, progreso,
@@ -96,7 +95,18 @@ export default function Reader() {
   } = useSavedWordHighlights({ renditionRef, bookMeta });
 
   const { state: audiobookState, controls: audiobookControls } = useAudiobook(bookId);
+  const sleepTimer = useSleepTimer(audiobookState, audiobookControls);
   const [audioScrollSync, setAudioScrollSync] = useState(true);
+  // Derivado: si se desvincula el audiolibro, el modo solo audio cae con él.
+  const audioOnly = audioOnlyMode && audiobookState.hasFile;
+
+  // En pantalla completa (y en modo solo audiolibro) ocultamos la cabecera y
+  // el sidebar del layout (si no, se pintan por encima del lector). Al
+  // desmontar, restauramos el chrome.
+  useEffect(() => {
+    setChromeHidden(fullscreen || audioOnly);
+    return () => setChromeHidden(false);
+  }, [fullscreen, audioOnly, setChromeHidden]);
   const {
     followScroll, followScrollRef,
     suppressScrollUntilRef, lastTargetYRef, lastAutoScrollTopRef,
@@ -694,7 +704,14 @@ export default function Reader() {
               onClick={handleFollowClick}
               title={followScroll ? "Siguiendo la línea" : "Ir a la línea"}
               style={{
-                position: "fixed", bottom: "6rem", right: "1.5rem", zIndex: 50,
+                position: "fixed",
+                // En móvil el reproductor tiene tres filas (más alto) y llega
+                // casi al borde: el botón sube para no quedar debajo.
+                bottom: isPhone
+                  ? "calc(10.5rem + env(safe-area-inset-bottom, 0px))"
+                  : "6rem",
+                right: isPhone ? "1rem" : "1.5rem",
+                zIndex: 50,
                 width: "44px", height: "44px", borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: followScroll ? t.link : `${t.bg}ee`,
@@ -720,9 +737,24 @@ export default function Reader() {
             onAdjustCursor={adjustCursorOffset}
             aiChapterTitles={aiChapterTitles}
             onResetMapping={resetMapping}
+            onEnterAudioMode={() => setAudioOnlyMode(true)}
+            sleepTimerLabel={sleepTimerLabel(sleepTimer.timer)}
           />
         </div>
       </div>
+
+      {audioOnly && (
+        <AudiobookMode
+          state={audiobookState}
+          controls={audiobookControls}
+          theme={t}
+          bookTitle={bookMeta?.title ?? navState?.title}
+          coverPath={bookMeta?.coverPath ?? navState?.coverPath}
+          aiChapterTitles={aiChapterTitles}
+          sleepTimer={sleepTimer}
+          onExit={() => setAudioOnlyMode(false)}
+        />
+      )}
     </div>
   );
 }

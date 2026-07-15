@@ -2,10 +2,14 @@ import {
   Play, Pause, SkipBack, SkipForward,
   RotateCcw, RotateCw, Headphones, X,
   Loader2, Navigation, Gauge, Volume2, VolumeX, Volume1, Settings2,
+  Expand, Moon,
 } from "lucide-react";
 import { useState } from "react";
 import type { AudiobookState, AudiobookControls } from "../hooks/useAudiobook";
+import SeekBar from "./SeekBar";
 import type { ReaderThemeColors } from "@/types/reader";
+import { isTouchDevice } from "@/lib/utils";
+import { useIsPhone } from "@/hooks/use-mobile";
 
 interface Props {
   state: AudiobookState;
@@ -18,6 +22,10 @@ interface Props {
   onAdjustCursor?: (delta: number) => void;
   onResetMapping?: () => void;
   aiChapterTitles?: string[];
+  /** Entra en el modo solo audiolibro (reproductor a pantalla completa). */
+  onEnterAudioMode?: () => void;
+  /** Etiqueta del temporizador de apagado si está activo (p. ej. "12:34"). */
+  sleepTimerLabel?: string | null;
 }
 
 const RATES = [0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -36,7 +44,11 @@ export default function AudiobookPlayer({
   state, controls, theme: t,
   mappingLoading, scrollSync, onToggleScrollSync,
   cursorOffset = 0, onAdjustCursor, onResetMapping, aiChapterTitles = [],
+  onEnterAudioMode, sleepTimerLabel,
 }: Props) {
+  // Teléfono (táctil + estrecho): layout compacto de 3 filas. iPad y
+  // escritorio comparten la fila única clásica.
+  const isPhone = useIsPhone();
   const [showSpeed, setShowSpeed] = useState(false);
   const [showVolume, setShowVolume] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -65,8 +77,9 @@ export default function AudiobookPlayer({
       <button
         onClick={controls.pickFile}
         title={hasStored ? `Reconectar: ${state.savedFileName}` : "Vincular audiolibro"}
-        className="fixed bottom-5 right-5 z-50 transition-opacity hover:opacity-75"
+        className="fixed right-5 z-50 transition-opacity hover:opacity-75"
         style={{
+          bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
           background: `${t.bg}ee`, border: `1px solid ${t.text}20`,
           color: hasStored ? t.link : `${t.text}50`, borderRadius: "999px",
           padding: "0.45rem 1rem", display: "flex", alignItems: "center", gap: "0.5rem",
@@ -81,11 +94,155 @@ export default function AudiobookPlayer({
     );
   }
 
+  // ── Piezas compartidas por los dos layouts (escritorio y táctil) ──
+
+  const statusChips = (
+    <>
+      {sleepTimerLabel && (
+        <span
+          title="Temporizador de apagado activo"
+          style={{
+            display: "flex", alignItems: "center", gap: "3px",
+            fontSize: "10px", fontWeight: 600, color: t.link,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          <Moon size={11} />
+          {sleepTimerLabel}
+        </span>
+      )}
+      {state.opfsSaving && (
+        <span style={{ fontSize: "9px", color: `${t.text}35` }}>
+          {Math.round(state.opfsSaveProgress * 100)}%
+        </span>
+      )}
+      {mappingLoading && !state.opfsSaving && (
+        <Loader2 size={10} className="animate-spin" style={{ color: `${t.text}35` }} />
+      )}
+    </>
+  );
+
+  const speedBtn = (
+    <button
+      onClick={() => { setShowSpeed((s) => !s); setShowVolume(false); setShowSettings(false); }}
+      style={{
+        display: "flex", alignItems: "center", gap: "4px",
+        fontSize: "11px", fontWeight: 500,
+        color: showSpeed ? t.link : dim,
+        padding: isTouchDevice ? "10px 8px" : "2px 4px", borderRadius: "6px",
+        background: showSpeed ? `${t.link}12` : "transparent",
+        transition: "all .1s",
+      }}
+      className="hover:opacity-75"
+    >
+      <Gauge size={13} />
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{state.playbackRate}×</span>
+    </button>
+  );
+
+  const expandBtn = onEnterAudioMode && (
+    <button
+      onClick={() => { closeAll(); onEnterAudioMode(); }}
+      title="Modo audiolibro"
+      style={{
+        display: "flex", alignItems: "center",
+        padding: isTouchDevice ? "10px" : "3px", color: dim,
+      }}
+      className="hover:opacity-70 transition-opacity"
+    >
+      <Expand size={14} />
+    </button>
+  );
+
+  const settingsBtn = (
+    <button
+      onClick={() => { setShowSettings((s) => !s); setShowSpeed(false); setShowVolume(false); }}
+      title="Ajustes"
+      style={{
+        display: "flex", alignItems: "center",
+        padding: isTouchDevice ? "10px" : "3px",
+        color: showSettings || scrollSync ? t.link : dim,
+        transition: "color .15s",
+      }}
+      className="hover:opacity-70"
+    >
+      <Settings2 size={15} />
+    </button>
+  );
+
+  const transport = (
+    <div style={{ display: "flex", alignItems: "center", gap: isTouchDevice ? "10px" : "12px" }}>
+      <GhostBtn onClick={() => hasPrev && controls.goToChapter(idx - 1)} faded={!hasPrev} color={t.text}>
+        <SkipBack size={17} />
+      </GhostBtn>
+
+      <GhostBtn onClick={() => controls.skip(-10)} color={t.text}>
+        <span style={{ position: "relative", display: "inline-flex" }}>
+          <RotateCcw size={17} />
+          <span style={{ position: "absolute", fontSize: "5.5px", fontWeight: 700, bottom: "1px", right: "-1px", lineHeight: 1 }}>10</span>
+        </span>
+      </GhostBtn>
+
+      <button
+        onClick={controls.togglePlay}
+        style={{
+          width: isTouchDevice ? "44px" : "36px",
+          height: isTouchDevice ? "44px" : "36px",
+          borderRadius: "50%",
+          background: t.link, color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, transition: "opacity .12s",
+        }}
+        className="hover:opacity-85"
+      >
+        {state.isPlaying ? <Pause size={15} /> : <Play size={15} />}
+      </button>
+
+      <GhostBtn onClick={() => controls.skip(10)} color={t.text}>
+        <span style={{ position: "relative", display: "inline-flex" }}>
+          <RotateCw size={17} />
+          <span style={{ position: "absolute", fontSize: "5.5px", fontWeight: 700, bottom: "1px", left: "-1px", lineHeight: 1 }}>10</span>
+        </span>
+      </GhostBtn>
+
+      <GhostBtn onClick={() => hasNext && controls.goToChapter(idx + 1)} faded={!hasNext} color={t.text}>
+        <SkipForward size={17} />
+      </GhostBtn>
+    </div>
+  );
+
+  const progressRow = (
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <span style={{ fontSize: "10px", color: `${t.text}40`, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+        {fmt(chElapsed)}
+      </span>
+
+      <div style={{ flex: 1 }}>
+        <SeekBar
+          pct={chPct}
+          theme={t}
+          trackHeight={3}
+          touchPadding={10}
+          onSeekRatio={(r) => controls.seek(chStart + r * chDur)}
+          previewTime={(r) => fmt(r * chDur)}
+        />
+      </div>
+
+      <span style={{ fontSize: "10px", color: `${t.text}40`, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+        {fmt(chDur)}
+      </span>
+    </div>
+  );
+
   return (
     <div
-      className="absolute bottom-4 left-1/2 z-50 -translate-x-1/2"
+      className="absolute left-1/2 z-50 -translate-x-1/2"
       style={{
-        width: "min(600px, calc(100% - 3rem))",
+        bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
+        // En móvil apuramos los márgenes: cada px de barra cuenta.
+        width: isPhone
+          ? "min(600px, calc(100% - 1.25rem))"
+          : "min(600px, calc(100% - 3rem))",
         borderRadius: "16px",
         background: `${t.bg}f0`,
         border: `1px solid ${t.text}12`,
@@ -93,8 +250,9 @@ export default function AudiobookPlayer({
         overflow: "visible",
       }}
     >
-      {/* Volume slider floating above */}
-      {showVolume && (
+      {/* Volume slider floating above (no en móvil: allí el volumen se
+          controla con los botones físicos; iOS además ignora audio.volume) */}
+      {showVolume && !isPhone && (
         <div
           style={{
             position: "absolute", bottom: "calc(100% + 8px)", left: "14px",
@@ -134,7 +292,7 @@ export default function AudiobookPlayer({
               onClick={() => { controls.setRate(r); setShowSpeed(false); }}
               style={{
                 fontSize: "11px", fontWeight: state.playbackRate === r ? 600 : 400,
-                padding: "4px 9px", borderRadius: "8px",
+                padding: isTouchDevice ? "10px 11px" : "4px 9px", borderRadius: "8px",
                 background: state.playbackRate === r ? `${t.link}20` : "transparent",
                 color: state.playbackRate === r ? t.link : `${t.text}55`,
                 transition: "all .1s",
@@ -185,7 +343,10 @@ export default function AudiobookPlayer({
           {onResetMapping && (
             <button
               onClick={() => { onResetMapping(); closeAll(); }}
-              style={{ fontSize: "11px", color: `${t.text}50`, textAlign: "left", padding: "2px 0" }}
+              style={{
+                fontSize: "11px", color: `${t.text}50`, textAlign: "left",
+                padding: isTouchDevice ? "8px 0" : "2px 0",
+              }}
               className="hover:opacity-60 transition-opacity"
             >
               Resetear mapeo de capítulos
@@ -200,7 +361,10 @@ export default function AudiobookPlayer({
                 <button
                   onClick={() => onAdjustCursor(-2)}
                   className="hover:opacity-60 transition-opacity"
-                  style={{ fontSize: "15px", color: `${t.text}50`, padding: "0 6px", lineHeight: 1 }}
+                  style={{
+                    fontSize: "15px", color: `${t.text}50`, lineHeight: 1,
+                    padding: isTouchDevice ? "10px 12px" : "0 6px",
+                  }}
                 >−</button>
                 <span style={{
                   fontSize: "11px", fontWeight: 600, minWidth: "2.5rem", textAlign: "center",
@@ -212,155 +376,103 @@ export default function AudiobookPlayer({
                 <button
                   onClick={() => onAdjustCursor(2)}
                   className="hover:opacity-60 transition-opacity"
-                  style={{ fontSize: "15px", color: `${t.text}50`, padding: "0 6px", lineHeight: 1 }}
+                  style={{
+                    fontSize: "15px", color: `${t.text}50`, lineHeight: 1,
+                    padding: isTouchDevice ? "10px 12px" : "0 6px",
+                  }}
                 >+</button>
               </div>
             </div>
           )}
+
+          {/* Desvincular: en móvil vive aquí (en la barra no cabe y evita
+              toques accidentales); en iPad/escritorio sigue como X en la barra. */}
+          {isPhone && (
+            <button
+              onClick={() => { closeAll(); controls.removeFile(); }}
+              style={{ fontSize: "11px", color: "#e5484d99", textAlign: "left", padding: "8px 0" }}
+              className="hover:opacity-60 transition-opacity"
+            >
+              Desvincular audiolibro
+            </button>
+          )}
         </div>
       )}
 
-      <div style={{ padding: "10px 16px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ padding: "10px 16px 12px", display: "flex", flexDirection: "column", gap: isPhone ? "4px" : "8px" }}>
+        {isPhone ? (
+          <>
+            {/* ── Móvil: transporte / progreso / secundarios ──
+                Tres filas: la única forma de que los 5 botones de transporte
+                tengan zona pulsable decente en un móvil estrecho. */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              {transport}
+            </div>
 
-        {/* ── Row 1: left | center controls | right ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+            {progressRow}
 
-          {/* Left: volume + speed + status */}
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1 }}>
-            {/* Volume */}
-            <button
-              onClick={() => { setShowVolume((s) => !s); setShowSpeed(false); setShowSettings(false); }}
-              style={{
-                display: "flex", alignItems: "center",
-                color: showVolume ? t.link : volume === 0 ? `${t.text}35` : dim,
-                padding: "2px 4px", borderRadius: "6px",
-                background: showVolume ? `${t.link}12` : "transparent",
-                transition: "all .1s",
-              }}
-              className="hover:opacity-75"
-            >
-              <VolumeIcon size={14} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {speedBtn}
+                {statusChips}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                {expandBtn}
+                {settingsBtn}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ── iPad/escritorio · Row 1: left | center controls | right ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+              {/* Left: volume + speed + status */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1 }}>
+                <button
+                  onClick={() => { setShowVolume((s) => !s); setShowSpeed(false); setShowSettings(false); }}
+                  style={{
+                    display: "flex", alignItems: "center",
+                    color: showVolume ? t.link : volume === 0 ? `${t.text}35` : dim,
+                    // En iPad (táctil pero ancho) también engorda la zona pulsable.
+                    padding: isTouchDevice ? "10px 8px" : "2px 4px",
+                    borderRadius: "6px",
+                    background: showVolume ? `${t.link}12` : "transparent",
+                    transition: "all .1s",
+                  }}
+                  className="hover:opacity-75"
+                >
+                  <VolumeIcon size={14} />
+                </button>
 
-            <button
-              onClick={() => { setShowSpeed((s) => !s); setShowVolume(false); setShowSettings(false); }}
-              style={{
-                display: "flex", alignItems: "center", gap: "4px",
-                fontSize: "11px", fontWeight: 500,
-                color: showSpeed ? t.link : dim,
-                padding: "2px 4px", borderRadius: "6px",
-                background: showSpeed ? `${t.link}12` : "transparent",
-                transition: "all .1s",
-              }}
-              className="hover:opacity-75"
-            >
-              <Gauge size={13} />
-              <span style={{ fontVariantNumeric: "tabular-nums" }}>{state.playbackRate}×</span>
-            </button>
-            {state.opfsSaving && (
-              <span style={{ fontSize: "9px", color: `${t.text}35` }}>
-                {Math.round(state.opfsSaveProgress * 100)}%
-              </span>
-            )}
-            {mappingLoading && !state.opfsSaving && (
-              <Loader2 size={10} className="animate-spin" style={{ color: `${t.text}35` }} />
-            )}
-          </div>
+                {speedBtn}
+                {statusChips}
+              </div>
 
-          {/* Center: transport */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <GhostBtn onClick={() => hasPrev && controls.goToChapter(idx - 1)} faded={!hasPrev} color={t.text}>
-              <SkipBack size={17} />
-            </GhostBtn>
+              {/* Center: transport */}
+              {transport}
 
-            <GhostBtn onClick={() => controls.skip(-10)} color={t.text}>
-              <span style={{ position: "relative", display: "inline-flex" }}>
-                <RotateCcw size={17} />
-                <span style={{ position: "absolute", fontSize: "5.5px", fontWeight: 700, bottom: "1px", right: "-1px", lineHeight: 1 }}>10</span>
-              </span>
-            </GhostBtn>
+              {/* Right: audio mode + settings + close */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+                {expandBtn}
+                {settingsBtn}
+                <button
+                  onClick={controls.removeFile}
+                  style={{
+                    color: `${t.text}20`, display: "flex",
+                    padding: isTouchDevice ? "10px" : "2px",
+                  }}
+                  className="transition-opacity hover:opacity-60"
+                  title="Desvincular"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
 
-            <button
-              onClick={controls.togglePlay}
-              style={{
-                width: "36px", height: "36px", borderRadius: "50%",
-                background: t.link, color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0, transition: "opacity .12s",
-              }}
-              className="hover:opacity-85"
-            >
-              {state.isPlaying ? <Pause size={15} /> : <Play size={15} />}
-            </button>
-
-            <GhostBtn onClick={() => controls.skip(10)} color={t.text}>
-              <span style={{ position: "relative", display: "inline-flex" }}>
-                <RotateCw size={17} />
-                <span style={{ position: "absolute", fontSize: "5.5px", fontWeight: 700, bottom: "1px", left: "-1px", lineHeight: 1 }}>10</span>
-              </span>
-            </GhostBtn>
-
-            <GhostBtn onClick={() => hasNext && controls.goToChapter(idx + 1)} faded={!hasNext} color={t.text}>
-              <SkipForward size={17} />
-            </GhostBtn>
-          </div>
-
-          {/* Right: settings + close */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-            <button
-              onClick={() => { setShowSettings((s) => !s); setShowSpeed(false); setShowVolume(false); }}
-              title="Ajustes"
-              style={{
-                display: "flex", alignItems: "center", padding: "3px",
-                color: showSettings || scrollSync ? t.link : dim,
-                transition: "color .15s",
-              }}
-              className="hover:opacity-70"
-            >
-              <Settings2 size={15} />
-            </button>
-            <button
-              onClick={controls.removeFile}
-              style={{ color: `${t.text}20`, display: "flex", padding: "2px" }}
-              className="transition-opacity hover:opacity-60"
-              title="Desvincular"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        </div>
-
-        {/* ── Row 2: progress bar ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "10px", color: `${t.text}40`, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-            {fmt(chElapsed)}
-          </span>
-
-          <div
-            className="group"
-            style={{ flex: 1, position: "relative", height: "3px", borderRadius: "99px", background: `${t.text}14`, cursor: "pointer" }}
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              controls.seek(chStart + Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * chDur);
-            }}
-          >
-            <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: `${chPct}%`, borderRadius: "99px", background: t.link }} />
-            <div
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{
-                position: "absolute", top: "50%", left: `${chPct}%`,
-                width: "10px", height: "10px", borderRadius: "50%",
-                background: t.text, transform: "translate(-50%, -50%)",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
-
-          <span style={{ fontSize: "10px", color: `${t.text}40`, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-            {fmt(chDur)}
-          </span>
-        </div>
-
+            {/* ── Escritorio · Row 2: progress bar ── */}
+            {progressRow}
+          </>
+        )}
       </div>
     </div>
   );
@@ -373,7 +485,13 @@ function GhostBtn({ onClick, faded, color, children }: {
     <button
       onClick={faded ? undefined : onClick}
       className="flex items-center justify-center rounded-full transition-opacity hover:opacity-50"
-      style={{ padding: "5px", opacity: faded ? 0.15 : 1, cursor: faded ? "default" : "pointer", color }}
+      style={{
+        // En táctil, zona pulsable ~40px sin que el icono crezca.
+        padding: isTouchDevice ? "11px" : "5px",
+        opacity: faded ? 0.15 : 1,
+        cursor: faded ? "default" : "pointer",
+        color,
+      }}
     >
       {children}
     </button>

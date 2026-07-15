@@ -188,11 +188,15 @@ export default function FlashCard({
         </div>
       ) : (
         <div className="mt-6 flex items-center gap-1 text-sm text-muted-foreground">
-          Pulsa{" "}
-          <kbd className="mx-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs">
-            espacio
-          </kbd>{" "}
-          para ver
+          {/* En táctil no hay teclado: la tarjeta se voltea tocándola. */}
+          <span className="touch:hidden flex items-center gap-1">
+            Pulsa{" "}
+            <kbd className="mx-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs">
+              espacio
+            </kbd>{" "}
+            para ver
+          </span>
+          <span className="hidden touch:inline">Toca la tarjeta para ver</span>
         </div>
       )}
     </div>

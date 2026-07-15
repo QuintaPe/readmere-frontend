@@ -219,6 +219,28 @@ export function useEpubBook({ bookId, userId, viewerRef, events }: UseEpubBookOp
 
       rendition.display(book.currentCfi || undefined);
 
+      // epub.js sólo rellena `location.start.percentage` si el índice de
+      // "locations" del libro está generado. Sin esto el porcentaje de
+      // progreso es siempre 0. Lo generamos en segundo plano (puede tardar en
+      // libros grandes) para no bloquear el render inicial. Al terminar,
+      // reguardamos el progreso del CFI actual ya con el porcentaje real.
+      epubBook.locations
+        .generate(1600)
+        .then(() => {
+          if (cancelled) return;
+          const cfi = currentCfiRef.current;
+          if (!cfi) return;
+          try {
+            const progress = epubBook.locations.percentageFromCfi(cfi) ?? 0;
+            if (saveProgressTimer.current) clearTimeout(saveProgressTimer.current);
+            fetchApi(`/books/${bookId}`, {
+              method: "PUT",
+              body: JSON.stringify({ currentCfi: cfi, progress, lastOpenedAt: new Date().toISOString() }),
+            }).catch(() => { });
+          } catch { /* noop */ }
+        })
+        .catch(() => { });
+
       rendition.on("rendered", () => {
         const el = container.querySelector(".epub-container") as HTMLElement | null;
         if (el) {
@@ -230,9 +252,17 @@ export function useEpubBook({ bookId, userId, viewerRef, events }: UseEpubBookOp
 
       rendition.on("relocated", async (location: Any) => {
         const cfi = location?.start?.cfi;
-        const progress = location?.start?.percentage ?? 0;
         if (!cfi) return;
         currentCfiRef.current = cfi;
+        // Preferimos el porcentaje calculado desde las "locations" ya
+        // generadas; si aún no están listas, caemos al valor nativo (que
+        // puede ser 0 hasta que termine la generación).
+        let progress = location?.start?.percentage ?? 0;
+        try {
+          if (epubBook.locations?.length()) {
+            progress = epubBook.locations.percentageFromCfi(cfi) ?? progress;
+          }
+        } catch { /* noop */ }
         try {
           const views = rendition.manager?.views?._views || [];
           if (views[0]) {

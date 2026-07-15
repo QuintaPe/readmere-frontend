@@ -57,7 +57,7 @@ export default function RatingButtons({ card, onRate }: RatingButtonsProps) {
           </span>
         </button>
       </div>
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="touch:hidden text-center text-xs text-muted-foreground">
         Teclas:{" "}
         <kbd className="rounded border border-border bg-muted px-1">1</kbd> ·{" "}
         <kbd className="rounded border border-border bg-muted px-1">2</kbd> ·{" "}

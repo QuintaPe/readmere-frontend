@@ -175,6 +175,21 @@
     -webkit-font-smoothing: antialiased;
   }
   h1,h2,h3,h4 { letter-spacing: -0.02em; font-weight: 600; }
+
+  /* ── Táctil ──
+     Sin el flash gris de iOS/Android al tocar cualquier control. */
+  html { -webkit-tap-highlight-color: transparent; }
+  /* `manipulation` desactiva el zoom por doble toque sobre controles (causa
+     de zooms accidentales al pulsar rápido play/pausa o +10s) sin bloquear
+     el scroll ni el pellizco. */
+  button, a, [role="button"], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+  /* iOS hace zoom automático al enfocar inputs con fuente < 16px. Subirla
+     solo en táctil evita ese salto de zoom al buscar o escribir notas. */
+  @media (pointer: coarse) {
+    input, select, textarea { font-size: max(16px, 1em); }
+  }
 }
 
 /* Subtle radial glow used on hero / dashboard — tinted by the theme */

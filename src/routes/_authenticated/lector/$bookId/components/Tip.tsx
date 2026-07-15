@@ -4,6 +4,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { isTouchDevice } from "@/lib/utils";
 
 interface TipProps {
   label: string;
@@ -14,6 +15,10 @@ interface TipProps {
 export default function Tip({ label, shortcut, children }: TipProps) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // En táctil no hay hover ni teclado: el tooltip solo aparecería tras el
+  // toque (por el focus), cuando la acción ya se hizo. Fuera.
+  if (isTouchDevice) return <>{children}</>;
 
   const scheduleClose = () => {
     closeTimer.current = setTimeout(() => setOpen(false), 80);
