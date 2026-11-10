@@ -45,7 +45,7 @@ export const AI_PROVIDERS: AiProviderDef[] = [
     id: "gemini",
     label: "Google Gemini",
     kind: "gemini",
-    model: "gemini-2.5-flash",
+    model: "gemini-flash-latest",
     keyUrl: "https://aistudio.google.com/apikey",
     placeholder: "AIza...",
     note: "gratis",
