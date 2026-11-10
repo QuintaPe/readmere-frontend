@@ -21,6 +21,9 @@ export interface AiProviderDef {
   label: string;
   kind: AiProviderKind;
   model: string;
+  /** Modelo(s) a los que caer si `model` responde 429 (cuota agotada),
+   * en orden. Se prueban uno a uno hasta que alguno responda. */
+  fallbackModels?: string[];
   /** Solo para kind "openai": raíz de la API (sin /chat/completions). */
   baseUrl?: string;
   /** Dónde conseguir la clave. */
@@ -46,6 +49,9 @@ export const AI_PROVIDERS: AiProviderDef[] = [
     label: "Google Gemini",
     kind: "gemini",
     model: "gemini-flash-latest",
+    // Si se agota la cuota del Flash normal, cae al Flash-Lite (cuota propia,
+    // más barato/rápido, algo menos capaz).
+    fallbackModels: ["gemini-flash-lite-latest"],
     keyUrl: "https://aistudio.google.com/apikey",
     placeholder: "AIza...",
     note: "gratis",
@@ -161,6 +167,20 @@ function extractJson(text: string): string {
   return fenced ? fenced[1] : t;
 }
 
+function fetchGemini(model: string, apiKey: string, prompt: string): Promise<Response> {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    },
+  );
+}
+
 async function callAi(prompt: string): Promise<string> {
   const ai = getAiProvider();
   if (!ai) throw new Error("AI no configurada. Añade tu clave API en los Ajustes.");
@@ -168,17 +188,13 @@ async function callAi(prompt: string): Promise<string> {
 
   let res: Response;
   if (def.kind === "gemini") {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${def.model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" },
-        }),
-      },
-    );
+    res = await fetchGemini(def.model, apiKey, prompt);
+    // 429 = cuota agotada para ese modelo concreto; cada modelo de Gemini
+    // tiene su propia cuota, así que probamos los fallbacks antes de rendirnos.
+    for (const fallback of def.fallbackModels ?? []) {
+      if (res.status !== 429) break;
+      res = await fetchGemini(fallback, apiKey, prompt);
+    }
   } else if (def.kind === "anthropic") {
     res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
